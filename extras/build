@@ -1,0 +1,89 @@
+#! /usr/bin/env bash
+
+# Tool to build go programs in this repo
+#
+# - it tacks on a version number for use by the individual tools
+# - it supports git and mercurial version#
+# 
+# NB:
+#   o the attempt at decoding dirty repo state for mercurial is
+#     borked. It doesn't know about untracked files
+#
+# (c) 2016 Sudhi Herle
+#
+# License: GPLv2
+#
+progs="adsrv"
+pwd=`pwd`
+
+case "x$1" in
+    x-h*|x--h*)
+        cat <<EOF
+Usage: $0
+       $0 OS-ARCH [PROGS]
+       $0 -- [PROGS]
+
+Where OS-ARCH denotes one of the valid OS, ARCH combinations supported by 'gg'.
+And, PROGS is one or more of $progs
+
+With no arguments, $0 builds: $progs
+EOF
+        exit 0
+        ;;
+
+    x)
+        ;;
+
+    x--) shift
+        ;;
+
+    *) cross=$1
+       shift
+        ;;
+esac
+
+
+# Get git/hg version info for the build
+if [ -d "./.hg" ]; then
+    xrev=$(hg id --id)
+    brev=${xrev%+}
+    if [ "$brev" != "$xrev" ]; then
+        rev="hg:${brev}-dirty"
+    else
+        rev="hg:${brev}"
+    fi
+        
+elif [ -d "./.git" ]; then
+    xrev=$(git describe --always --dirty --long --abbrev=12)
+    rev="git:$xrev"
+else
+    rev="UNKNOWN-VER"
+    echo "$0: Can't find version info" 1>&2
+fi
+
+
+ver="main.Version=$rev"
+build_flags="-ldflags \"-X $ver\""
+
+# figure out what our env is and setup appropriate bin dir
+if [ -n "$cross" ]; then
+    arch="--arch=$cross"
+fi
+z=`./gg $arch env` || exit 1
+eval "$z"
+bindir=$pwd/bin/${GOOS}-${GOARCH}
+mkdir -p $bindir
+
+if [ -z "$1" ]; then
+    all=$progs
+else
+    all="$@"
+fi
+
+echo "Building $rev .. $cross [$all]"
+
+for p in $all; do 
+    echo "$p .."
+    ./gg $arch build -o $bindir/$p "$build_flags" $p || exit 1
+done
+# .. vim: ft=sh:expandtab:ts=4:sw=4:tw=96:
