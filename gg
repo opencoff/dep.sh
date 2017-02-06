@@ -216,7 +216,7 @@ update_all() {
             fi
 
             echo "$z $u $v" >> $mftmp
-        done
+        done || exit 1
 
     cd $wd
     if maybe_update_manifest $mf $mftmp; then
@@ -265,7 +265,7 @@ update_one() {
             fi
 
             echo "$z $u $v" >> $mftmp
-        done
+        done || exit 1
 
     if maybe_update_manifest $mf $mftmp; then
         $e git add $mf
@@ -313,7 +313,7 @@ sync_all() {
               fi
             ) || exit 1
           echo "$z $u $v" >> $mftmp
-        done
+        done || exit 1
 
     if maybe_update_manifest $mf $mftmp; then
         $e git add $mf
