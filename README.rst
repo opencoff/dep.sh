@@ -9,11 +9,11 @@ What is ``gg``
 ``gg`` is an *augmented* wrapper around 'go' toolchain. The
 enhancements are:
 
-#. Painless cross-compiling
-
-#. Easy vendordependency management. ``gg`` does **NOT** checkin the
-   vendor code into your local repository. This keeps *your*
+#. Easy vendor dependency management. ``gg`` does **NOT** checkin the
+   vendor code into your local repository. This keeps your
    repository small/clean.
+
+#. Painless cross-compiling
 
 When run from a top project directory, it implicitly sets ``GOPATH``
 to the project directory and its vendor path.
@@ -79,6 +79,7 @@ Then,::
 
     mkdir -p projx
     cd projx
+    git init
 
 Now, copy ``gg`` to the top level of ``projx`` directory. The
 following commands assume you have already done that.
@@ -138,7 +139,7 @@ Working on a project as a new contributor
 Let's say that you are joining an existing project as a new
 contributor. In such a case, the repository you are working on
 likely has vendor code pinned by other developers. But, you need to
-ready your workspace for building your golang program; i.e.,
+get your workspace ready for building your golang program; i.e.,
 checkout the vendor repositories so ``go build`` can find it::
 
     git clone /path/to/your/repo/projx
@@ -154,7 +155,8 @@ Once complete, you build your golang program.
 Cross Compiling
 ===============
 To make cross-compiling easy (including for environments that require CGO), ``gg``
-supports a command line option to denote the target CPU and OS. For example,
+supports a command line option to denote the target CPU and OS: ``--arch``.
+This option takes as argument in the form "OS-CPU".  For example,
 cross-compiling a binary ``foo`` for Android-ARM64::
 
     ./gg --arch=android-arm64 build -o bin/android-arm64/foo foo
@@ -176,7 +178,7 @@ in ``vendor/src``.
 Extras
 ======
 The *extras* folder has a small shell script called ``build``. I use this
-script for portably building my go programs. This tool does a few important
+script for building my go programs. This tool does a few important
 things for me:
 
     * it can build one or more binaries
