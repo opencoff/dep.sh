@@ -96,10 +96,10 @@ Global options:
 ---------------
 --help, -h      Show this help message and quit
 --init          Initialize a directory with go 1.5+ conventions
---arch=X        Cross compile for architecture 'X'. An Arch is a
+--arch=X, -a X  Cross compile for architecture 'X'. An Arch is a
                 combination of OS and CPU. e.g., android-arm64.
 --dry-run       Run in dry-run mode (do not modify disk)
---debug         Run the tool in "debug mode"
+--debug, -x     Run the tool in "debug mode"
 EOF
     exit 0
 }
@@ -398,7 +398,10 @@ do
             ;;
 
         --arch=*)
-            arch=$ac_optarg
+            Arch=$ac_optarg
+            ;;
+        -a|--arch)
+            ac_prev=Arch
             ;;
 
         --dry-run)

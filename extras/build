@@ -13,34 +13,104 @@
 #
 # License: GPLv2
 #
-progs="adsrv"
+Progs="fitzp"
+Protobufs="src/lib/securl/enc.proto"
 pwd=`pwd`
+Z=`basename $0`
 
-case "x$1" in
-    x-h*|x--h*)
-        cat <<EOF
+die() {
+    echo "$Z: $@" 1>&2
+    exit 1
+}
+
+usage() {
+    cat <<EOF
 Usage: $0
-       $0 OS-ARCH [PROGS]
+       $0 [options] OS-ARCH [PROGS]
        $0 -- [PROGS]
 
 Where OS-ARCH denotes one of the valid OS, ARCH combinations supported by 'gg'.
-And, PROGS is one or more of $progs
+And, PROGS is one or more of $Progs
 
-With no arguments, $0 builds: $progs
+With no arguments, $0 builds: $Progs
+
+Options:
+    -h, --help          show this help message and quit
+    -s, --static        build a static binary [dynamic]
+    -v N, --version=N   use 'N' as the product version string [0.1]
+    -a X, --arch=X      cross build for architecture 'X'
+    -x                  run in debug/trace mode
 EOF
-        exit 0
-        ;;
 
-    x)
-        ;;
+    return 0
+}
 
-    x--) shift
-        ;;
 
-    *) cross=$1
-       shift
-        ;;
-esac
+static=
+pver="0.1"  # default product version
+trace=
+arch=
+args=
+arg=
+prev=
+for arg
+do
+  shift
+
+  if [ -n "$prev" ]; then
+    eval "$prev=\$arg"
+    prev=
+    continue
+  fi
+
+  case "$arg" in
+      -*=*) optarg=`echo "$arg" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+      *) optarg= ;;
+  esac
+
+
+  case "$arg" in
+        --help|-h|--hel|--he|--h)
+            usage;
+            exit 0
+            ;;
+
+        --arch=*)
+            arch=$optarg
+            ;;
+
+        -a|--arch)
+            prev=arch
+            ;;
+
+        --version=*)
+            pver=$optarg
+            ;;
+
+        -v|--version)
+            prev=pver
+            ;;
+
+        --debug|-x)
+            trace="-x"
+            set -x
+            ;;
+
+        --static|-s)
+            static=1
+            ;;
+
+        *) # first non option terminates option processing.
+           # we gather all remaining args and bundle them up.
+            args="$args $arg"
+            for xx
+            do
+                args="$args $xx"
+            done
+            break
+            ;;
+  esac
+done
 
 
 # Get git/hg version info for the build
@@ -54,36 +124,65 @@ if [ -d "./.hg" ]; then
     fi
         
 elif [ -d "./.git" ]; then
-    xrev=$(git describe --always --dirty --long --abbrev=12)
+    xrev=$(git describe --always --dirty --long --abbrev=12) || exit 1
     rev="git:$xrev"
 else
     rev="UNKNOWN-VER"
     echo "$0: Can't find version info" 1>&2
 fi
 
+# Do Protobufs if needed
+if [ -n "$Protobufs" ]; then
+    pc=$(type -p protoc)
+    slk=$(type -p protoc-gen-gogoslick)
 
-ver="main.Version=$rev"
-build_flags="-ldflags \"-X $ver\""
+    [ -z "$pc" ] && die "Need 'protoc' for building .."
+    [ -z "$slk" ] && die "Need 'protoc-gen-gogoslick' for building .."
+
+    for f in $Protobufs; do
+        dn=$(dirname $f)
+        bn=$(basename $f .proto)
+        of=$dn/${bn}.pb.go
+        if [ $f -nt $of ]; then
+            echo "Running $pc .."
+            $pc --gogoslick_out=. $f || exit 1
+        fi
+    done
+fi
+
+set -- $args
 
 # figure out what our env is and setup appropriate bin dir
-if [ -n "$cross" ]; then
-    arch="--arch=$cross"
+[ -n "$arch" ]   && cross="--arch=$arch"
+
+if [ -n "$static" ]; then
+    export CGO_ENABLED=0
+    isuffix="--installsuffix cgo"
+    ldflags="-s"
+    staticmsg="statically linked"
 fi
-z=`./gg $arch env` || exit 1
-eval "$z"
+
+GOOS=$(./gg $cross env GOOS)      || exit 1
+GOARCH=$(./gg $cross env GOARCH)  || exit 1
 bindir=$pwd/bin/${GOOS}-${GOARCH}
-mkdir -p $bindir
+mkdir -p $bindir                  || exit 1
 
 if [ -z "$1" ]; then
-    all=$progs
+    all=$Progs
 else
     all="$@"
 fi
 
-echo "Building $rev .. $cross [$all]"
+echo "Building $rev .. $arch $staticmsg"
 
-for p in $all; do 
+# Put build time stamp and repo version
+ver="main.RepoVersion=$rev"
+prodver="main.ProductVersion=$pver"
+date="main.Buildtime=`date -u '+%Y-%m-%dT%H:%M.%SZ'`"
+ldflags="-ldflags=\"-X $ver -X $prodver -X $date $ldflags\""
+
+for p in $all; do
     echo "$p .."
-    ./gg $arch build -o $bindir/$p "$build_flags" $p || exit 1
+    ./gg $trace $cross build -o $bindir/$p $isuffix "$ldflags" $p || exit 1
 done
 # .. vim: ft=sh:expandtab:ts=4:sw=4:tw=96:
