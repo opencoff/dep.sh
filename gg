@@ -108,8 +108,9 @@ Global options:
 --init          Initialize a directory with go 1.5+ conventions
 --arch=X, -a X  Cross compile for architecture 'X'. An Arch is a
                 combination of OS and CPU. e.g., android-arm64.
---dry-run       Run in dry-run mode (do not modify disk)
---debug, -x     Run the tool in "debug mode"
+--dry-run       Run in dry-run mode (do not modify disk) [False]
+--no-git, -N    Don't run any 'git add' commands [False]
+--debug, -x     Run the tool in "debug mode" [False]
 EOF
     exit 0
 }
