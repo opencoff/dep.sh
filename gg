@@ -29,6 +29,7 @@ Debug=0
 Verbose=0
 Gitquiet="-q"
 Arch=
+Nogit=
 e=
 
 #set -e
@@ -51,6 +52,15 @@ warn() {
 
 progress() {
     echo "$@"
+    return 0
+}
+
+
+gitx() {
+    if [ $Nogit -eq 0 ]; then
+        $e git "$@"
+        return $?
+    fi
     return 0
 }
 
@@ -98,8 +108,9 @@ Global options:
 --init          Initialize a directory with go 1.5+ conventions
 --arch=X, -a X  Cross compile for architecture 'X'. An Arch is a
                 combination of OS and CPU. e.g., android-arm64.
---dry-run       Run in dry-run mode (do not modify disk)
---debug, -x     Run the tool in "debug mode"
+--dry-run       Run in dry-run mode (do not modify disk) [False]
+--no-git, -N    Don't run any 'git add' commands [False]
+--debug, -x     Run the tool in "debug mode" [False]
 EOF
     exit 0
 }
@@ -123,9 +134,9 @@ maybe_update_manifest() {
 # Last-Updated: `date`
 #
 EOFx
-    cat $new >> $mftmp
+    [ -s $new ] && cat $new >> $mftmp
     $e mv $mftmp $mf
-    rm -f $old $new
+    rm -f $old $new $mftmp
     return 0
 }
 
@@ -176,7 +187,7 @@ rebuild_manifest() {
         done
 
     if maybe_update_manifest $mf $mftmp; then
-        $e git add $mf
+        $e gitx add $mf
     fi
     )
 
@@ -220,7 +231,7 @@ update_all() {
 
     cd $wd
     if maybe_update_manifest $mf $mftmp; then
-        $e git add $mf
+        $e gitx add $mf
     fi
     return 0
 }
@@ -268,7 +279,7 @@ update_one() {
         done || exit 1
 
     if maybe_update_manifest $mf $mftmp; then
-        $e git add $mf
+        $e gitx add $mf
     fi
     return 0
 }
@@ -316,7 +327,7 @@ sync_all() {
         done || exit 1
 
     if maybe_update_manifest $mf $mftmp; then
-        $e git add $mf
+        $e gitx add $mf
     fi
     return 0
 }
@@ -408,6 +419,10 @@ do
             Dryrun=1
             ;;
 
+        --no-git|-N)
+            Nogit=1
+            ;;
+
         --debug|-x)
             Debug=1
             ;;
@@ -447,7 +462,7 @@ vendor/pkg/*
 EOFx
     fi
 
-    git add vendor/manifest.txt .gitignore
+    gitx add vendor/manifest.txt .gitignore
     exit 0
 fi
 
@@ -490,6 +505,8 @@ fi
 
 vendor=$PWD/vendor
 export GOPATH=$vendor:$PWD
+[ -f $vendor/manifest.txt ] || touch $vendor/manifest.txt
+
 case $cmd in
 
     fetch|get)
