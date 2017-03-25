@@ -181,9 +181,18 @@ The *extras* folder has a small shell script called ``build``. I use this
 script for building my go programs. This tool does a few important
 things for me:
 
-    * it can build one or more binaries
-    * it set git version hash to 'main.Version'
+    * it can build one or more binaries and sets some variables from the
+      environment:
+
+        - main.RepoVersion is set to git repository hash
+        - main.ProductVersion is set from build command line option (``--version=``)
+        - main.Buildtime is set to UTC build timestamp
     * it can cross-compile one or more binaries
+    * it can statically link binaries - as long as CGO is not needed for that
+      HOSt/OS combination.
+    * it can invoke protobuf compiler for generating go source before building
+      the programs [only invokes if .proto file is newer than the generated
+      file]
 
 The script is written to build multiple artifacts in the *src/* directory.
 The artifacts are set in the ``progs`` variable at the top of the script. You
