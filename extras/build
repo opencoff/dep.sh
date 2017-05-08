@@ -69,7 +69,7 @@ With no arguments, $0 builds: $Progs (source in ./src/)
 
 Options:
     -h, --help          Show this help message and quit
-    -, --static         Build a statically linked binary [False]
+    -s, --static        Build a statically linked binary [False]
     -V N, --version=N   Use 'N' as the product version string [$Prodver]
     -a X, --arch=X      Cross compile for OS-CPU 'X' [$hostos-$hostcpu]
     -n, --dry-run       Dry-run, don't actually build anything [False]
