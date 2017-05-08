@@ -189,7 +189,7 @@ things for me:
         - main.Buildtime is set to UTC build timestamp
     * it can cross-compile one or more binaries
     * it can statically link binaries - as long as CGO is not needed for that
-      HOSt/OS combination.
+      HOST/OS combination.
     * it can invoke protobuf compiler for generating go source before building
       the programs [only invokes if .proto file is newer than the generated
       file]
@@ -197,7 +197,5 @@ things for me:
 The script is written to build multiple artifacts in the *src/* directory.
 The artifacts are set in the ``progs`` variable at the top of the script. You
 generally do not have to modify anything else after that line.
-
-And yes, ``build`` uses ``gg`` for its job.
 
 .. vim: ft=rst:sw=4:ts=4:expandtab:tw=78:

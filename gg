@@ -29,7 +29,7 @@ Debug=0
 Verbose=0
 Gitquiet="-q"
 Arch=
-Nogit=
+Nogit=0
 e=
 
 #set -e

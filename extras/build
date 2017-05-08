@@ -13,7 +13,7 @@
 #
 # License: GPLv2
 #
-Progs="fitzp"
+Progs="myprog"
 
 # Relative path to protobuf sources
 # e.g. src/foo/a.proto
@@ -32,10 +32,13 @@ Prodver=0.1
 hostos=$(go env GOHOSTOS)       || exit 1
 hostcpu=$(go env GOHOSTARCH)    || exit 1
 
-
 die() {
     echo "$Z: $@" 1>&2
     exit 0
+}
+
+warn() {
+    echo "$Z: $@" 1>&2
 }
 
 case $BASH_VERSION in
@@ -45,10 +48,6 @@ case $BASH_VERSION in
         ;;
 esac
 
-warn() {
-    echo "$Z: $@" 1>&2
-}
-
 usage() {
 
     cat <<EOF
@@ -56,17 +55,17 @@ $0 - A Go production build tool that adds git-repository information,
 product version, build-timestamp etc. It supports cross-compilation,
 static linking and generating protobuf output.
 
-It uses the gogo-slick protobuf compiler [github.com/gogo/protobuf].
+If needed, it uses the gogo-slick protobuf compiler [github.com/gogo/protobuf].
 
 Build output is in bin/\$OS-\$CPU for a given OS, CPU combination.
 
 Usage: $0
        $0 [options] [PROGS]
 
-Where OS-ARCH denotes one of the valid OS, ARCH combinations supported by 'gg'.
+Where OS-ARCH denotes one of the valid OS, ARCH combinations supported by 'go'.
 And, PROGS is one or more go programs.
 
-With no arguments, $0 builds: $Progs
+With no arguments, $0 builds: $Progs (source in ./src/)
 
 Options:
     -h, --help          Show this help message and quit
@@ -292,4 +291,5 @@ for p in $all; do
     echo "   $p .."
     $e eval go build -o $Bindir/$p $isuffix "$ldflags" $p || exit 1
 done
-# .. vim: ft=sh:expandtab:ts=4:sw=4:tw=84:
+
+# vim: ft=sh:expandtab:ts=4:sw=4:tw=84:
