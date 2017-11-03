@@ -341,6 +341,7 @@ sync_all() {
               if [ -d $d/.git ]; then
                   cd $d
                   local cv=$(git describe --always --abbrev=64)
+                  [ -z "$cv" ] && die "$z: git corrupted?"
                   if [ $cv = $v ]; then
                       progress "$z Repo already at $v; skipping .."
                   else
@@ -385,6 +386,7 @@ list_all() {
               if [ -d $d/.git ]; then
                   cd $d
                   local cv=$(git describe --always --abbrev=64)
+                  [ -z "$cv" ] && die "$z: git corrupted?"
                   if [ $cv = $v ]; then
                       echo "$z: up-to-date [$v]"
                   else
