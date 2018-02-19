@@ -13,11 +13,11 @@
 #
 # License: GPLv2
 #
-Progs="myprog"
+Progs=""
 
 # Relative path to protobuf sources
 # e.g. src/foo/a.proto
-Protobufs="src/lib/securl/enc.proto"
+Protobufs=""
 
 
 # -- DO NOT CHANGE ANYTHING AFTER THIS --
@@ -48,6 +48,38 @@ case $BASH_VERSION in
         ;;
 esac
 
+
+# build a tool that runs on the host - if needed.
+hosttool() {
+    local tool=$1
+    local bindir=$2
+    local src=$3
+
+    local p=$(type -P $tool)
+    if [ -n "$p" ]; then
+        echo $p
+        return 0
+    fi
+
+    # from here - we want this dir to find all build artifacts
+    PATH=$PATH:$bindir
+    export PATH
+
+    p=$bindir/$tool
+    if [ -x $p ]; then
+        echo $p
+        return 0
+    fi
+
+    # build it and stash it in the hostdir
+    echo "Building tool $tool from $src .."
+    $e go get         $src || exit 1
+    $e go build -o $p $src || exit 1
+    echo $p
+    return 0
+}
+
+
 usage() {
 
     cat <<EOF
@@ -73,6 +105,7 @@ Options:
     -V N, --version=N   Use 'N' as the product version string [$Prodver]
     -a X, --arch=X      Cross compile for OS-CPU 'X' [$hostos-$hostcpu]
     -n, --dry-run       Dry-run, don't actually build anything [False]
+    -t, --test          Run "go test" on modules named on the command line [False]
     -x                  Run in debug/trace mode [False]
 EOF
 
@@ -110,6 +143,7 @@ for c in $cpulist; do
 done
 
 
+Runtests=0
 doinit=0
 args=
 
@@ -146,6 +180,10 @@ do
         --version=*)
             Prodver=$ac_optarg
             ;;
+        --test|-t)
+            Runtests=1
+            ;;
+
         -V|--version)
             ac_prev=Prodver
             ;;
@@ -174,6 +212,9 @@ do
   esac
 done
 [ $Dryrun  -gt 0 ] && e=echo
+
+# let every error abort
+set -e
 
 # This fragment can't be in a function - since it exports several vars
 if [ -n "$Arch" ]; then
@@ -229,10 +270,9 @@ Hostbindir=$PWD/bin/$hostos-$hostcpu
 [ -d $Bindir ]     || mkdir -p $Bindir
 [ -d $Hostbindir ] || mkdir -p $Hostbindir
 
-
 # Get git/hg version info for the build
 if [ -d "./.hg" ]; then
-    xrev=$(hg id --id)
+    xrev=$(hg id --id) || exit 1
     brev=${xrev%+}
     if [ "$brev" != "$xrev" ]; then
         rev="hg:${brev}-dirty"
@@ -240,7 +280,7 @@ if [ -d "./.hg" ]; then
         rev="hg:${brev}"
     fi
 elif [ -d "./.git" ]; then
-    xrev=$(git describe --always --dirty --long --abbrev=12)
+    xrev=$(git describe --always --dirty --long --abbrev=12) || exit 1
     rev="git:$xrev"
 else
     rev="UNKNOWN-VER"
@@ -250,14 +290,16 @@ fi
 # Do Protobufs if needed
 if [ -n "$Protobufs" ]; then
     slick=$Hostbindir/protoc-gen-gogoslick
+    slicksrc=github.com/gogo/protobuf/protoc-gen-gogoslick
     pc=$(type -p protoc)
 
     [ -z "$pc" ] && die "Need 'protoc' for building .."
 
-    if [ ! -f $slick ]; then
-        echo "Building $slick .."
-        $e go build -o $slick github.com/gogo/protobuf/protoc-gen-gogoslick || exit 1
-    fi
+    slick=$(hosttool protoc-gen-gogoslick $Hostbindir $slicksrc) || exit 1
+    #if [ ! -f $slick ]; then
+    #   echo "Building $slick .."
+    #   $e go build -o $slick github.com/gogo/protobuf/protoc-gen-gogoslick || exit 1
+    #i
 
     export PATH=$PATH:$Hostbindir
 
@@ -278,18 +320,23 @@ date="main.Buildtime=`date -u '+%Y-%m-%dT%H:%M.%SZ'`"
 ldflags="-ldflags \"-X $repover -X $prodver -X $date $ldflags\""
 
 
-set -- $args
-if [ -z "$1" ]; then
-    all=$Progs
+if [ $Runtests -gt 0 ]; then
+    set -- $args
+    $e go test "$@"
 else
-    all="$@"
+    set -- $args
+    if [ -z "$1" ]; then
+        all=$Progs
+    else
+        all="$@"
+    fi
+
+    echo "Building $rev, $cross $msg .."
+
+    for p in $all; do 
+        echo "   $p .."
+        $e eval go build -o $Bindir/$p $isuffix "$ldflags" $p || exit 1
+    done
 fi
-
-echo "Building $rev, $cross $msg .."
-
-for p in $all; do 
-    echo "   $p .."
-    $e eval go build -o $Bindir/$p $isuffix "$ldflags" $p || exit 1
-done
 
 # vim: ft=sh:expandtab:ts=4:sw=4:tw=84:
