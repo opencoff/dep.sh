@@ -73,7 +73,7 @@ hosttool() {
 
     # build it and stash it in the hostdir
     echo "Building tool $tool from $src .."
-    $e go get         $src || exit 1
+    $e go get -d      $src || exit 1
     $e go build -o $p $src || exit 1
     echo $p
     return 0
