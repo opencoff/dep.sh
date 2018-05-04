@@ -74,6 +74,10 @@ fetch|get  repo [tag]
     If the optional TAG is specified, update the vendor repo to that
     specific version.
 
+delete repo
+    Remove REPO from the manifest and if present, remove from the
+    filesystem as well.
+
 update  repo [tag]
 update  --all
     In the first mode, update one particular repo with the latest
@@ -198,6 +202,30 @@ rebuild_manifest() {
     return 0
 }
 
+# delete a repo
+delete_repo() {
+    local vend=$1
+    local gone=$2
+    local rr=
+    local mf=$vend/manifest.txt
+    local mftmp=$mf.tmp.$$.$RANDOM
+    grep -v '#' $mf | \
+        while read line; do
+            set -- $line
+            local z=$1
+            local v=$2
+            local u=$3
+
+            if [ $z != $gone ]; then
+               echo "$line" >> $mftmp
+            fi
+        done
+
+    if maybe_update_manifest $mf $mftmp; then
+        $e gitx add $mf || exit 1
+    fi
+    return 0
+}
 
 # Upgrade old manifest to a new style
 upgrade_old() {
@@ -245,8 +273,8 @@ update_all() {
             cd $vend/src/$z
 
             # XXX We always assume git
-            $e git pull $Gitquiet origin master || exit 1
-            $e git checkout $Gitquiet master    || exit 1
+            $e git pull $Gitquiet origin     || exit 1
+            $e git checkout $Gitquiet master || exit 1
             v=$(git describe --always --abbrev=64)
             if [ $v = $oldv ]; then
                 progress "$z: No upstream changes; staying at $v .."
@@ -293,8 +321,8 @@ update_one() {
 
             # Update this repo
             cd $vend/src/$repo
-            $e git pull  $Gitquiet origin master || exit 1
-            $e git checkout $Gitquiet $tag       || exit 1
+            $e git pull  $Gitquiet origin  || exit 1
+            $e git checkout $Gitquiet $tag || exit 1
             v=$(git describe --always --abbrev=64)
             cd $wd
             if [ $v = $oldv ]; then
@@ -342,7 +370,7 @@ sync_all() {
                       progress "$z Repo already at $v; skipping .."
                   else
                       progress "$z: Moving from $cv to $v .."
-                      $e git pull     $Gitquiet origin master && \
+                      $e git pull     $Gitquiet origin && \
                       $e git checkout $Gitquiet $v
                   fi
               else
@@ -500,6 +528,13 @@ case $cmd in
         [ -n "$repo" ] || die "missing repo name for fetch"
 
         fetch $vendor $repo $tag
+        ;;
+
+    delete)
+        repo=$1
+        [ -n "$repo" ] || die "missing repo name for delete"
+
+        delete_repo $vendor $repo
         ;;
 
     update)
